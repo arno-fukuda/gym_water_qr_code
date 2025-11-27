@@ -2,117 +2,115 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Dynamic QR (JST +30m)</title>
+    <title>Dynamic QR (Segno Exact Replica)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- QRCode.js from CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <script src="qrcodegen.js"></script>
+
     <style>
       body {
+        margin: 0;
+        padding: 0;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
           sans-serif;
-        margin: 0;
-        background: #0f172a;
-        color: #e5e7eb;
+        background: #ffffff;
+        color: #000000;
+        min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 100vh;
       }
-      .card {
-        background: #020617;
-        border-radius: 16px;
-        padding: 24px 28px;
-        max-width: 420px;
-        width: 100%;
-        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
-        border: 1px solid #1f2937;
+      .wrapper {
+        text-align: center;
+        padding: 16px;
       }
       h1 {
-        font-size: 1.2rem;
-        margin: 0 0 0.5rem;
+        margin-bottom: 0.5rem;
+        font-size: 1.4rem;
       }
       .subtitle {
-        font-size: 0.85rem;
-        color: #9ca3af;
+        font-size: 0.9rem;
+        color: #444444;
         margin-bottom: 1.5rem;
       }
-      #qrcode {
-        display: flex;
-        align-items: center;
-        justify-content: center;
+      #qr-output {
+        display: inline-block;
         padding: 12px;
-        background: #020617;
-        border-radius: 12px;
-        border: 1px solid #1f2937;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
         margin-bottom: 1rem;
+        background: #ffffff;
       }
-      .meta {
+      /* Pixelated rendering ensures crisp edges matching Python output */
+      #qr-output svg {
+        width: 150px;
+        height: 150px;
+        display: block;
+        image-rendering: pixelated;
+        shape-rendering: crispEdges;
+      }
+      .info {
         font-size: 0.85rem;
         line-height: 1.5;
+        text-align: left;
+        max-width: 360px;
+        margin: 0 auto;
       }
       .label {
-        color: #9ca3af;
+        font-weight: 600;
+        color: #555555;
       }
       .value {
-        font-family: "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono",
-          "Courier New", monospace;
+        font-family: "SF Mono", monospace;
         word-break: break-all;
       }
-      .pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        font-size: 0.75rem;
-        padding: 0.2rem 0.6rem;
-        border-radius: 999px;
-        border: 1px solid #1f2937;
-        color: #9ca3af;
-        margin-bottom: 0.75rem;
+      .error {
+        color: red;
+        font-weight: bold;
       }
     </style>
   </head>
   <body>
-    <div class="card">
+    <div class="wrapper">
       <h1>Dynamic QR Code</h1>
       <div class="subtitle">
-        Contents: <code>10016010072530031&nbsp;YYYYMMDDHHmm</code><br />
-        Time is <strong>Asia/Tokyo</strong>, shifted
-        <strong>+30 minutes</strong>.
+        Payload: <code>10016010072530031...</code><br />
+        Time zone: <strong>Asia/Tokyo (+30m)</strong><br />
+        <strong>Ver 2 | EC H | Mask 6 | Numeric</strong>
       </div>
 
-      <div class="pill">
-        <span>⏱ Updates every minute</span>
-      </div>
+      <div id="qr-output"></div>
 
-      <div id="qrcode"></div>
-
-      <div class="meta">
+      <div class="info">
         <div>
-          <span class="label">Current Tokyo time (+30m):</span><br />
-          <span class="value" id="tokyoTime"></span>
+          <span class="label">Current Tokyo time (+30m):</span><br /><span
+            class="value"
+            id="tokyoTime"
+          ></span>
         </div>
         <br />
         <div>
-          <span class="label">Timestamp used (YYYYMMDDHHmm):</span><br />
-          <span class="value" id="timestamp"></span>
+          <span class="label">Timestamp (YYYYMMDDHHmm):</span><br /><span
+            class="value"
+            id="timestamp"
+          ></span>
         </div>
         <br />
         <div>
-          <span class="label">QR payload string:</span><br />
-          <span class="value" id="payload"></span>
+          <span class="label">QR payload:</span><br /><span
+            class="value"
+            id="payload"
+          ></span>
         </div>
       </div>
     </div>
 
     <script>
       const BASE_STRING = "10016010072530031"
-      let qr = null
 
       function formatTokyoTimestampPlus30(now) {
-        // now = current time on the device
         const plus30 = new Date(now.getTime() + 30 * 60 * 1000)
 
-        // Format using Asia/Tokyo, then build YYYYMMDDHHmm
         const formatter = new Intl.DateTimeFormat("ja-JP", {
           timeZone: "Asia/Tokyo",
           year: "numeric",
@@ -128,45 +126,78 @@
           return acc
         }, {})
 
-        const y = parts.year
-        const m = parts.month
-        const d = parts.day
-        const hh = parts.hour
-        const mm = parts.minute
+        const compact = `${parts.year}${parts.month}${parts.day}${parts.hour}${parts.minute}`
+        const humanReadable = `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute} (JST +30m)`
+        return { compact, humanReadable }
+      }
 
-        const humanReadable = `${y}-${m}-${d} ${hh}:${mm} (JST +30m)`
-        const compact = `${y}${m}${d}${hh}${mm}`
-
-        return { humanReadable, compact }
+      // Helper to generate SVG string from Nayuki's QR object
+      function drawQrToSvg(qr, border) {
+        const size = qr.size
+        let parts = []
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+            if (qr.getModule(x, y)) {
+              // Draw a single 1x1 rectangle for every dark module
+              parts.push(`M${x + border},${y + border}h1v1h-1z`)
+            }
+          }
+        }
+        const viewBoxSize = size + border * 2
+        return `
+            <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" stroke="none">
+                <rect width="100%" height="100%" fill="#FFFFFF"/>
+                <path d="${parts.join(" ")}" fill="#000000"/>
+            </svg>`
       }
 
       function updateQr() {
-        const now = new Date()
-        const { humanReadable, compact } = formatTokyoTimestampPlus30(now)
+        try {
+          const now = new Date()
+          const { compact, humanReadable } = formatTokyoTimestampPlus30(now)
+          const payload = `${BASE_STRING}${compact}`
 
-        const payload = `${BASE_STRING} ${compact}`
+          // Access the library classes
+          // If this fails, check if qrcodegen.js is loading correctly in the Network tab
+          const QrCode = qrcodegen.QrCode
+          const QrSegment = qrcodegen.QrSegment
 
-        if (!qr) {
-          qr = new QRCode(document.getElementById("qrcode"), {
-            text: payload,
-            width: 256,
-            height: 256,
-          })
-        } else {
-          qr.clear()
-          qr.makeCode(payload)
+          // --- STRICT SEGNO COMPATIBILITY SETTINGS ---
+
+          // 1. Force Numeric Segment
+          // This ensures 10 bits per 3 digits compression (vs 8 bits per char in Byte mode)
+          const segs = [QrSegment.makeNumeric(payload)]
+
+          // 2. Encode with precise parameters
+          // encodeSegments(segments, ecc, minVersion, maxVersion, mask, boostEcl)
+          const qr = QrCode.encodeSegments(
+            segs,
+            QrCode.Ecc.HIGH, // EC Level H
+            2, // Min Version: 2
+            2, // Max Version: 2 (Forces V2)
+            6, // Mask Pattern: 6
+            false // boostEcl: FALSE (Vital for matching Segno)
+          )
+
+          // 3. Render
+          const svg = drawQrToSvg(qr, 0) // border=0 (handled by CSS padding)
+
+          document.getElementById("qr-output").innerHTML = svg
+          document.getElementById("tokyoTime").textContent = humanReadable
+          document.getElementById("timestamp").textContent = compact
+          document.getElementById("payload").textContent = payload
+        } catch (e) {
+          console.error(e)
+          document.getElementById(
+            "qr-output"
+          ).innerHTML = `<div class="error">Error: ${e.message}</div>`
         }
-
-        document.getElementById("tokyoTime").textContent = humanReadable
-        document.getElementById("timestamp").textContent = compact
-        document.getElementById("payload").textContent = payload
       }
 
-      // Initial render
+      // Initial run
       updateQr()
-
-      // Update every minute
-      setInterval(updateQr, 60 * 1000)
+      // Update every 60s
+      setInterval(updateQr, 60000)
     </script>
   </body>
 </html>
