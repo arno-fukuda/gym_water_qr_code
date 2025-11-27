@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Dynamic QR (Segno Exact Replica)</title>
+    <title>Gym Water QR Code Generator</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <script src="qrcodegen.js"></script>
@@ -72,7 +72,7 @@
   </head>
   <body>
     <div class="wrapper">
-      <h1>Dynamic QR Code</h1>
+      <h1>Gym Water QR Code Generator</h1>
       <div class="subtitle">
         Payload: <code>10016010072530031...</code><br />
         Time zone: <strong>Asia/Tokyo (+30m)</strong><br />
@@ -131,14 +131,12 @@
         return { compact, humanReadable }
       }
 
-      // Helper to generate SVG string from Nayuki's QR object
       function drawQrToSvg(qr, border) {
         const size = qr.size
         let parts = []
         for (let y = 0; y < size; y++) {
           for (let x = 0; x < size; x++) {
             if (qr.getModule(x, y)) {
-              // Draw a single 1x1 rectangle for every dark module
               parts.push(`M${x + border},${y + border}h1v1h-1z`)
             }
           }
@@ -157,30 +155,21 @@
           const { compact, humanReadable } = formatTokyoTimestampPlus30(now)
           const payload = `${BASE_STRING}${compact}`
 
-          // Access the library classes
-          // If this fails, check if qrcodegen.js is loading correctly in the Network tab
           const QrCode = qrcodegen.QrCode
           const QrSegment = qrcodegen.QrSegment
 
-          // --- STRICT SEGNO COMPATIBILITY SETTINGS ---
-
-          // 1. Force Numeric Segment
-          // This ensures 10 bits per 3 digits compression (vs 8 bits per char in Byte mode)
           const segs = [QrSegment.makeNumeric(payload)]
 
-          // 2. Encode with precise parameters
-          // encodeSegments(segments, ecc, minVersion, maxVersion, mask, boostEcl)
           const qr = QrCode.encodeSegments(
             segs,
-            QrCode.Ecc.HIGH, // EC Level H
-            2, // Min Version: 2
-            2, // Max Version: 2 (Forces V2)
-            6, // Mask Pattern: 6
-            false // boostEcl: FALSE (Vital for matching Segno)
+            QrCode.Ecc.HIGH,
+            2,
+            2,
+            6,
+            false
           )
 
-          // 3. Render
-          const svg = drawQrToSvg(qr, 0) // border=0 (handled by CSS padding)
+          const svg = drawQrToSvg(qr, 0)
 
           document.getElementById("qr-output").innerHTML = svg
           document.getElementById("tokyoTime").textContent = humanReadable
@@ -194,9 +183,7 @@
         }
       }
 
-      // Initial run
       updateQr()
-      // Update every 60s
       setInterval(updateQr, 60000)
     </script>
   </body>
